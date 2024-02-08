@@ -1,14 +1,36 @@
 class_name Lobby
 extends Node
 
+const CONFIG = "user://config.json"
 
 var _games = []
 
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
+	
+	if not FileAccess.file_exists(CONFIG):
+		push_error("Can't load cconfig")
+		get_tree().quit(-1)
+
+	var config: Dictionary = JSON.parse_string(
+		FileAccess.get_file_as_string(CONFIG)
+	)
+	
+	var cert: X509Certificate = X509Certificate.new()
+	if cert.load(config.cert):
+		push_error("Can't load certificate")
+		get_tree().quit(-2)
+	
+	var key: CryptoKey = CryptoKey.new()
+	if key.load(config.key):
+		push_error("Can't load private key")
+		get_tree().quit(-3)
+		
+	var tls_options: TLSOptions = TLSOptions.server(key, cert)
+	
 	var peer = WebSocketMultiplayerPeer.new()
-	peer.create_server(5858, "127.0.0.1")
+	peer.create_server(4443, "*", tls_options)
 	multiplayer.multiplayer_peer = peer
 	
 	peer.peer_connected.connect(_on_peer_connected)
@@ -28,7 +50,8 @@ func _on_peer_disconnected(id: int):
 	if game:
 		_games.erase(game)
 		var peer_id = game.get_peer_id(id)
-		peer_left_the_game.rpc_id(peer_id)
+		if peer_id > 0:
+			peer_left_the_game.rpc_id(peer_id)
 		_update_game_list_on_peers()
 
 

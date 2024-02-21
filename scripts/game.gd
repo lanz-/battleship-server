@@ -16,6 +16,8 @@ var opponent_ships = []
 var _host_placed = false
 var _opponent_placed = false
 
+var private: bool = false
+
 
 func get_peer_role(id: int):
 	if opponent_id == id:

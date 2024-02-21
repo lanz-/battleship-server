@@ -10,7 +10,7 @@ var _games = []
 func _ready():
 	
 	if not FileAccess.file_exists(CONFIG):
-		push_error("Can't load cconfig")
+		push_error("Can't load config")
 		get_tree().quit(-1)
 
 	var config: Dictionary = JSON.parse_string(
@@ -61,6 +61,9 @@ func _update_game_list_on_peers():
 		if game.state != Game.WAITING_OPPONENT:
 			continue
 		
+		if game.private:
+			continue
+		
 		game_list.append(game.name)
 	
 	print("Updating game list on peers: %s" % [game_list])
@@ -83,7 +86,7 @@ func set_game_list(_game_list: Array):
 
 
 @rpc("any_peer", "reliable")
-func create_game(game_name: String):
+func create_game(game_name: String, is_private: bool):
 	if len(_games) > 256:
 		print("Too many games already created")
 		return
@@ -98,12 +101,13 @@ func create_game(game_name: String):
 	game = Game.new()
 	game.name = game_name
 	game.peer_id = sender_id
+	game.private = is_private
 	
 	_games.append(game)
 	print("%s created new game [%s]" % [sender_id, game_name])
 	
 	_update_game_list_on_peers()
-	create_game.rpc_id(sender_id, game_name)
+	create_game.rpc_id(sender_id, game_name, is_private)
 
 
 @rpc("any_peer", "reliable")
@@ -122,6 +126,7 @@ func join_game(game_name: String):
 			_update_game_list_on_peers()
 			return
 	
+	join_game.rpc_id(sender_id, "")
 	print("Couldn find game %s for peer %s" % [game_name, sender_id])
 
 
